@@ -52,6 +52,23 @@ def _egl_device_works(idx: int) -> bool:
         return False
 
 
+def load_task_init_states(suite, task_id: int):
+    """Load a trusted local LIBERO init-state file across PyTorch versions.
+
+    LIBERO's helper calls torch.load without weights_only, whose default changed
+    to True in PyTorch 2.6. Its init-state files contain NumPy objects, so load
+    them explicitly as trusted pickle data.
+    """
+    import torch
+    from libero.libero import get_libero_path
+
+    task = suite.get_task(task_id)
+    path = os.path.join(
+        get_libero_path("init_states"), task.problem_folder, task.init_states_file
+    )
+    return torch.load(path, map_location="cpu", weights_only=False)
+
+
 def _configure_egl_device() -> None:
     """Pick a working EGL render device when the scheduler hands out GPU UUIDs.
 

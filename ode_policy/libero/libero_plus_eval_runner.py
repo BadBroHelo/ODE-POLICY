@@ -56,6 +56,7 @@ from ode_policy.libero.libero_eval_runner import (  # noqa: E402
     _load_policy,
     _rollout_task,
 )
+from ode_policy.libero.libero_env import load_task_init_states  # noqa: E402
 
 # --------------------------------------------------------------------------- #
 # perturbation taxonomy
@@ -323,7 +324,7 @@ def main():
         bddl_name = getattr(task, "bddl_file_name", None) or getattr(task, "bddl_file")
         bddl_file = os.path.join(bddl_root, task.problem_folder, bddl_name)
         try:
-            init_states = suite.get_task_init_states(tid)
+            init_states = load_task_init_states(suite, tid)
         except Exception as e:
             log.warning(f"[{task.name}] no init states ({e}); random reset.")
             init_states = None

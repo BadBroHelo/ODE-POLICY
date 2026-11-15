@@ -38,6 +38,7 @@ from ode_policy.libero.libero_conventions import measured_delta_from_poses
 from ode_policy.libero import exec_metrics
 from ode_policy.libero.libero_env import (
     build_policy_obs,
+    load_task_init_states,
     make_env,
     policy_action_to_env_action,
 )
@@ -363,7 +364,7 @@ def main():
         init_states = None
         if args.init_mode == "fixed":
             try:
-                init_states = suite.get_task_init_states(task_id)
+                init_states = load_task_init_states(suite, task_id)
             except Exception as e:
                 log.warning(f"[{task.name}] no init states ({e}); falling back to random resets.")
 

@@ -47,6 +47,7 @@ from ode_policy.libero import eval_ode_policy as odev
 from ode_policy.libero.pose import DT, TRACK_GAIN
 from ode_policy.libero import exec_metrics
 from ode_policy.libero import libero_eval_runner as stock
+from ode_policy.libero.libero_env import load_task_init_states
 from ode_policy.utils.pytorch_util import dict_apply
 
 
@@ -146,7 +147,7 @@ def main():
         task = suite.get_task(tid)
         bddl = os.path.join(bddl_root, task.problem_folder,
                             getattr(task, "bddl_file_name", None) or task.bddl_file)
-        init_states = suite.get_task_init_states(tid)
+        init_states = load_task_init_states(suite, tid)
         emb = table.lookup(getattr(task, "language", ""), task.name) if table else None
         if is_ode:
             sr, _, _ = odev._rollout_task(

@@ -15,16 +15,19 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${REPO_ROOT}"
 
-DEFAULT_POLICIES="ode ode_dit fm_dit fm_unet a2a_dit a2a ddpm_dit ddpm_unet ddim_unet mars act"
+# DEFAULT_POLICIES="ode ode_dit fm_dit fm_unet a2a_dit a2a ddpm_dit ddpm_unet ddim_unet mars act"
+
+DEFAULT_POLICIES="ode_dit fm_dit a2a_dit a2a ddpm_dit ddpm_unet act"
 read -r -a POLICIES <<< "${POLICIES:-${DEFAULT_POLICIES}}"
 TRAIN_SUITE="${TRAIN_SUITE:-libero_4suite}"
 
 NUM_EPOCHS="${NUM_EPOCHS:-10}"
 EVAL_EPISODES="${EVAL_EPISODES:-20}"
-EVAL_EVERY_CHECKPOINT="${EVAL_EVERY_CHECKPOINT:-0}"
+EVAL_EVERY_CHECKPOINT="${EVAL_EVERY_CHECKPOINT:-1}"
 RUN_TAG="${RUN_TAG:-all_libero}"
 RUN_ID="${RUN_TAG}_$(date +%Y%m%d_%H%M%S)"
 BATCH_SIZE="${BATCH_SIZE:-128}"
+TRAIN_CONFIG_CHECKPOINT_EPOCHS="${TRAIN_CONFIG_CHECKPOINT_EPOCHS:-[2,4,6,8,10]}"
 if [[ ${#POLICIES[@]} -eq 0 ]]; then
     echo "POLICIES must contain at least one item" >&2
     exit 2
@@ -49,7 +52,9 @@ for policy in "${POLICIES[@]}"; do
     bash scripts/train_libero.sh "${policy}" "${TRAIN_SUITE}" \
         "policy_name=${run_name}" \
         "train_config.training_params.num_epochs=${NUM_EPOCHS}" \
+        "train_config.training_params.checkpoint_epochs=${TRAIN_CONFIG_CHECKPOINT_EPOCHS}" \
         "train_config.dataloader.batch_size=${BATCH_SIZE}" \
+        "train_config.val_dataloader.batch_size=${BATCH_SIZE}" \
         "dataset_config.batch_size=${BATCH_SIZE}"
 
     checkpoint_dir="il_outputs/${run_name}/${TRAIN_SUITE}/checkpoints"

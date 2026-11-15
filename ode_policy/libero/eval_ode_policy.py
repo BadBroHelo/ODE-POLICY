@@ -41,7 +41,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 
 from ode_policy.libero import exec_metrics  # noqa: E402
 from ode_policy.libero.pose import DT, POSE_REF, TRACK_GAIN, live_pose, pose_signal, track_action
-from ode_policy.libero.libero_env import build_policy_obs, make_env
+from ode_policy.libero.libero_env import build_policy_obs, load_task_init_states, make_env
 from ode_policy.libero.libero_eval_runner import (
     SUITE_MAX_STEPS,
     _load_policy,
@@ -334,7 +334,7 @@ def main():
             continue
         bddl = os.path.join(bddl_root, task.problem_folder,
                             getattr(task, "bddl_file_name", None) or task.bddl_file)
-        init_states = suite.get_task_init_states(tid)
+        init_states = load_task_init_states(suite, tid)
         emb = table.lookup(getattr(task, "language", ""), task.name) if table else None
         log.info(f"[{tid+1}/{suite.n_tasks}] {task.name}")
         rec.task = task.name
