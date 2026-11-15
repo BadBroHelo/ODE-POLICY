@@ -19,7 +19,7 @@ DEFAULT_POLICIES="ode ode_dit fm_dit fm_unet a2a_dit a2a ddpm_dit ddpm_unet ddim
 read -r -a POLICIES <<< "${POLICIES:-${DEFAULT_POLICIES}}"
 TRAIN_SUITE="${TRAIN_SUITE:-libero_4suite}"
 
-NUM_EPOCHS="${NUM_EPOCHS:-100}"
+NUM_EPOCHS="${NUM_EPOCHS:-10}"
 EVAL_EPISODES="${EVAL_EPISODES:-20}"
 EVAL_EVERY_CHECKPOINT="${EVAL_EVERY_CHECKPOINT:-0}"
 RUN_TAG="${RUN_TAG:-all_libero}"
@@ -48,9 +48,9 @@ for policy in "${POLICIES[@]}"; do
     echo "=== train policy=${policy}, run=${run_name}, train_suite=${TRAIN_SUITE}, epochs=${NUM_EPOCHS} ==="
     bash scripts/train_libero.sh "${policy}" "${TRAIN_SUITE}" \
         "policy_name=${run_name}" \
-        "train_config.training_params.num_epochs=${NUM_EPOCHS} " \
-        "train_config.dataloader.batch_size=${BATCH_SIZE} " \
-        "dataset_config.batch_size=${BATCH_SIZE} "
+        "train_config.training_params.num_epochs=${NUM_EPOCHS}" \
+        "train_config.dataloader.batch_size=${BATCH_SIZE}" \
+        "dataset_config.batch_size=${BATCH_SIZE}"
 
     checkpoint_dir="il_outputs/${run_name}/${TRAIN_SUITE}/checkpoints"
     shopt -s nullglob
