@@ -17,7 +17,8 @@ cd "${REPO_ROOT}"
 
 # DEFAULT_POLICIES="ode ode_dit fm_dit fm_unet a2a_dit a2a ddpm_dit ddpm_unet ddim_unet mars act"
 
-DEFAULT_POLICIES="ode_dit fm_dit a2a_dit a2a ddpm_dit ddpm_unet act"
+# DEFAULT_POLICIES="ode_dit ddpm_dit ddpm_unet act"
+DEFAULT_POLICIES="a2a ddim_unet mars"
 read -r -a POLICIES <<< "${POLICIES:-${DEFAULT_POLICIES}}"
 TRAIN_SUITE="${TRAIN_SUITE:-libero_4suite}"
 

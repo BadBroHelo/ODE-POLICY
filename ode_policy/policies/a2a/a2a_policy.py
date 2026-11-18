@@ -22,6 +22,7 @@ import torch.nn.functional as F
 from ode_policy.utils.normalizer import LinearNormalizer
 from ode_policy.utils.pytorch_util import dict_apply
 from ode_policy.policies.base_image_policy import BaseImagePolicy
+from ode_policy.utils.history import assert_history_compatible
 
 from ode_policy.utils.models.flow_net import SimpleFlowNet
 from ode_policy.policies.a2a.action_ae import CNNActionEncoder, SimpleActionDecoder
@@ -59,6 +60,7 @@ class A2AImagePolicy(BaseImagePolicy):
         adaptive_weights=False,
         use_residual_images=False,
         use_temporal_conv=False,
+        history_source="agent_pos",
         **kwargs,
     ):
         super().__init__()
@@ -73,6 +75,12 @@ class A2AImagePolicy(BaseImagePolicy):
         action_shape = shape_meta["action"]["shape"]
         assert len(action_shape) == 1
         action_dim = action_shape[0]
+        state_shape = shape_meta.get("obs", {}).get("agent_pos", {}).get("shape")
+        if state_shape is not None:
+            assert_history_compatible(
+                history_source, state_shape[0], action_dim,
+                owner=type(self).__name__,
+            )
         # get feature dim (now excludes agent_pos)
         obs_feature_dim = obs_encoder.output_shape()[0]
 
@@ -154,6 +162,7 @@ class A2AImagePolicy(BaseImagePolicy):
         self.action_dim = action_dim
         self.n_action_steps = n_action_steps
         self.n_obs_steps = n_obs_steps
+        self.history_source = history_source
         self.kwargs = kwargs
 
         # Adaptive loss weighting (Kendall et al., 2018)
@@ -167,14 +176,27 @@ class A2AImagePolicy(BaseImagePolicy):
             })
         self._last_metrics = {}
 
-    def _get_history_actions(self, nobs, raw_obs=None):
-        """Get history actions normalized with action normalizer.
-
-        agent_pos in obs has the same physical meaning as action (e.g. both are
-        velocities or both are joint positions). We normalize with the action
-        normalizer so that flow start and target live in the same space.
-        """
-        raw = raw_obs["agent_pos"] if raw_obs is not None else nobs["agent_pos"]
+    def _get_history_actions(self, nobs, raw_obs=None, full_actions=None, measured_delta=None):
+        """Return the normalized history signal used as the flow source."""
+        if self.history_source == "measured_delta":
+            raw = measured_delta
+            if raw is None and raw_obs is not None:
+                raw = raw_obs.get("measured_delta")
+            assert raw is not None, (
+                "history_source='measured_delta' needs batch['measured_delta'] "
+                "(training) or obs_dict['measured_delta'] (inference)."
+            )
+            return self.normalizer["measured_delta"].normalize(raw[:, :self.n_obs_steps, :])
+        if self.history_source == "past_action":
+            if full_actions is not None:
+                raw = full_actions[:, :self.n_obs_steps, :]
+            else:
+                assert raw_obs is not None and "past_action" in raw_obs, (
+                    "history_source='past_action' needs obs_dict['past_action'] at inference."
+                )
+                raw = raw_obs["past_action"]
+        else:
+            raw = raw_obs["agent_pos"] if raw_obs is not None else nobs["agent_pos"]
         return self.normalizer["action"].normalize(raw)
 
     def _encode_visual_condition(self, nobs, batch_size):
@@ -221,7 +243,10 @@ class A2AImagePolicy(BaseImagePolicy):
         obs_latents = self._encode_visual_condition(nobs, batch_size)
 
         # Encode history states (n_obs_steps frames)
-        history_states = self._get_history_actions(nobs, batch["obs"])[:, :self.n_obs_steps, :]  # (B, 8, D)
+        history_states = self._get_history_actions(
+            nobs, batch["obs"], full_actions=batch["action"],
+            measured_delta=batch.get("measured_delta"),
+        )[:, :self.n_obs_steps, :]  # (B, 8, D)
         history_latents = self.history_action_encoder(history_states)
 
         # Encode future actions (8 frames starting from current time)
@@ -371,7 +396,10 @@ class A2AImagePolicy(BaseImagePolicy):
         nactions = self.normalizer["action"].normalize(batch["action"])
         
         # Encode history states (past n_obs_steps states)
-        history_states = self._get_history_actions(nobs, batch["obs"])[:, :self.n_obs_steps, :]  # (B, 8, D)
+        history_states = self._get_history_actions(
+            nobs, batch["obs"], full_actions=batch["action"],
+            measured_delta=batch.get("measured_delta"),
+        )[:, :self.n_obs_steps, :]  # (B, 8, D)
         history_latents = self.history_action_encoder(history_states)
 
         # Encode future actions (next n_action_steps actions)
@@ -413,7 +441,10 @@ class A2AImagePolicy(BaseImagePolicy):
         obs_latents = self._encode_visual_condition(nobs_subset, n_samples)
 
         # Encode history states
-        history_states = self._get_history_actions(nobs, batch["obs"])[:n_samples, :self.n_obs_steps, :]
+        history_states = self._get_history_actions(
+            nobs, batch["obs"], full_actions=batch["action"],
+            measured_delta=batch.get("measured_delta"),
+        )[:n_samples, :self.n_obs_steps, :]
         history_latents = self.history_action_encoder(history_states)
         
         # Encode future actions (ground truth target)

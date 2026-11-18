@@ -61,6 +61,9 @@ case "${POLICY}" in
     mars|a2a_dit)
         HIST_ARGS=("policy_config.history_source=measured_delta" "policy_config.noise_dims=[6]")
         ;;
+    a2a)
+        HIST_ARGS=("policy_config.history_source=measured_delta")
+        ;;
 esac
 
 # Eye-in-hand camera. Needs BOTH the dataset flag (supplies the tensor) and the
